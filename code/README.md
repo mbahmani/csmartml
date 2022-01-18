@@ -21,4 +21,4 @@ The results can be found in paper.
 ### Explanation of the repository
 ```src``` folder has the source code written in python 3.9.7. Further explanation could be found in the README.md insdie the ```src``` folder. 
 
-````notebook``` folder has the notebooks based on which the experiment was performed. Further explanation can be found in the comment of the notebook files itself. 
+```notebook``` folder has the notebooks based on which the experiment was performed. Further explanation can be found in the comment of the notebook files itself. 
