@@ -61,6 +61,12 @@ python main.py
 ```
 
 
+Output
+```bash
+Suggested cluster setting: [KMeans(max_iter=100, n_clusters=17)]
+Suggested data preprocessing pipeline: SimpleImputer()
+```
+
 ## Usage
 
 ```python
