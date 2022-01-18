@@ -16,3 +16,9 @@ Traditional machine learning models cannot solve the aforementioned challenge, t
 At first we cluster the original data using three clusterring algorithm, KMeans, Agglomerative, and Birch. So each dataset is clustered three times with a set of hyper parameters and the Multi CVI for each of those clusters are recorded. Then we perform the transformations on each of the datasets and repeat the process again which creates more data. Each time a row of data is generated with the meta features of the specific dataset, the algorithm and hyper parameter setting, and the multi CVI correlation score. The transformations/ data preprocessing techniques are performed once on the dataset and the multi CVI score is calculated. Then a combination of two transformations are performed on the dataset and the same process if performed again. Which gives us more data for the knowledge space. Later perforrm analysis to check if preprocesssing led to better clustering result based on the multi CVI score. And given a new dataset, we caluclate the nearest neighbor based on the meta data, and the pipeline that gve the best ressult based on the multi  CVI score is suggested as the best performing pipeline. The bigger and wider the knowledge space is, the accurate the suggestion would be. <br><br>
 
 The results can be found in paper. 
+
+
+### Explanation of the repository
+```src``` folder has the source code written in python 3.9.7. Further explanation could be found in the README.md insdie the ```src``` folder. 
+
+````notebook``` folder has the notebooks based on which the experiment was performed. Further explanation can be found in the comment of the notebook files itself. 

@@ -6,6 +6,7 @@ import itertools
 from scipy.spatial import distance
 import numpy as np
 import math
+from util import banfeld_raferty, i_index, c_index
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 from sklearn.datasets import load_iris
@@ -33,141 +34,81 @@ from sklearn.impute import SimpleImputer
 from itertools import combinations
 
 from sklearn.neighbors import NearestNeighbors
-#C-index CVI
-def c_index(data, class_label):
-    """
-        The C-Index, a measure of dispersionn
-    """
-    sw = 0
-    nw = 0
-    numCluster = max(class_label) + 1
-    data_matrix = np.asmatrix(data).astype(np.float)
-    
-    # iterate through all the clusters
-    for i in range(numCluster):
-        indices = [t for t, x in enumerate(class_label) if x == i]
-        clusterMember = data_matrix[indices, :]
-        # compute distance of every pair of points
-        list_clusterDis = distance.pdist(clusterMember)
-        sw = sw + sum(list_clusterDis)
-        nw = nw + len(list_clusterDis)
-    # compute the pairwise distance of the whole dataset
-    list_dataDis = distance.pdist(data_matrix)
-    # compute smin
-    sortedList = sorted(list_dataDis)
-    smin = sum(sortedList[0:nw])
-    # compute smax
-    sortedList = sorted(list_dataDis, reverse=True)
-    smax = sum(sortedList[0:nw])
-    
-    # compute the score
-    return (sw - smin) / (smax - smin)
 
 
-#i-index CVI  
-def i_index(data, class_label):
-      """
-        The I index, a measure of compactness.
-      """
-      
-      normClusterSum = 0
-      normDatasetSum = 0
-      list_centers = []
-
-      data_matrix = np.asmatrix(data).astype(np.float)
-      # compute the number of clusters and attribute
-      attributes = len(data_matrix[0])
-      numCluster = max(class_label) + 1
-      # compute the center of the dataset
-      dataCenter = np.mean(data_matrix, 0)
-      # iterate through all the clusters
-      for i in range(numCluster):
-          indices = [t for t, x in enumerate(class_label) if x == i]
-          clusterMember = data_matrix[indices, :]
-          # compute the center of the cluster
-          clusterCenter = np.mean(clusterMember, 0)
-          list_centers.append(np.asarray(clusterCenter))
-          # compute the norm for every member in the cluster with cluster center and dataset center
-          for member in clusterMember:
-              normClusterSum += distance.euclidean(member, clusterCenter)
-              normDatasetSum += distance.euclidean(member, dataCenter)
-      # compute the max distance between cluster centers
-      list_centers = np.concatenate(list_centers, axis=0)
-      maxCenterDis = max(distance.pdist(list_centers))
-      
-      # compute the fitness      
-      return math.pow(((normDatasetSum * maxCenterDis) / (normClusterSum * numCluster)), attributes)
-    
-
-#Banfel Rafery CVI
-def banfeld_raferty(data, class_label):
-    """ Banfeld-Raferty index is the weighted sum of the logarithms
-         of the traces of the variance-covariance matrix of each cluster
-         
-        Weighted sum of the logarithms of the traces of the variance-covariance matrix of each cluster
-        
-        OBJECTIVE: MIN
-    """
-
-    sum_total = 0
-    num_cluster = max(class_label) + 1
-    data_matrix = np.asmatrix(data).astype(np.float)
-    
-    # iterate through all the clusters
-    for i in range(num_cluster):
-        sum_dis = 0
-        indices = [t for t, x in enumerate(class_label) if x == i]
-        cluster_member = data_matrix[indices, :]
-
-        # compute the center of the cluster
-        cluster_center = np.mean(cluster_member, 0)
-
-        # iterate through all the members
-        for member in cluster_member:
-            sum_dis += distance.euclidean(member, cluster_center) ** 2
-
-        op = sum_dis / len(indices)
-        if op <= 0:
-            # Cannot calculate Banfeld_Raferty, due to an undefined value
-            continue
-        else:
-            sum_total += len(indices) * math.log(sum_dis / len(indices))
-
-    return sum_total
 
 
 class knowledge_base:
-"""
-This class has four functions. 
-_init_: Init intializes the variables that should be passed. 
-clus_hyp: clus_hyp sets the clustering algorithm and the hyperparameters. 
-knowledge_base: Knowledge base creates the knowledgebase or the meta learning space.
-pipeline: pipeline suggest the best pipeline based on either given knowledge base or it calls the
-          knowledge_base function and creates it and then suggest the pipeline. 
-          
-variable: During instance creation of the class, 3 variables are expected to initialize. 
-          clustering_algo: A list of clustering algorithm. 
-          param_range: A list of n_cluster hyper-parameter for the algorithm. i.e., [lower_limit, higher_limit]
-                        This could be customized as required. 
-          path_to_dataset: a string value to the path of the datasets for knowledge base creation. 
-                           Currently the path leads to .arff file, the raw file format from the dataset repo
-                           https://github.com/deric/clustering-benchmark/tree/master/src/main/resources/datasets/artificial
-                           
-          test_data: This variable is particular to pipeline function. User has to pass a CSV test file with 
-                     with the path for which user need the pipeline
-          knowledge_base: This variable is particular to pipeline function. User can set the path to the
-                          knowledge_base file generated by the knowledge_base function or if left empty, 
-                          the pipeline function will call knowldge_base function. Brace for the time_complexity for
-                          this case, it will take a long time to prepare the knowledge base. 
+
+    """
+    knowledge_base is a class to create meta learning space using the datasets available in the following repo:
+    https://github.com/deric/clustering-benchmark/tree/master/src/main/resources/datasets/artificial
+    The class has three input variables, among which three are mandatory. 
+    It has four methods, __init__, clus_hyp, knowledge_base, pipeline. Instantiation of the the knowledge_base
+
+    ...
+
+    Attributes
+    ----------
+    clustering_algo : list
+        A list of clustering algorithm
+    param_range : list
+        A list of n_cluster. i.e., [2,30], [lower_limit, higher_limit]
+    path_to_dataset : str
+        Path to the folder that contains the datasets which would be used to create the meta learning space. Default value is None, so that user can create an instance and pass previously created
+        metadataset later in the pipeline function. But for calling knowledge_base() method, this variable has to be passed.
+    
+    Methods
+    -------
+    __init__(self, clustering_algo, param_range, path_to_dataset=None)
+        Initializes the variables
+
+    clus_hyp(self)
+        Sets up the configuration based on which the knowledge base would be generated. 
+
+    knowledge_base(self)
+        Method to create the the knowledge_base. The path_to_dataset variable has to be passed in order to create the knowledge_base. The function reads the file in availabe .arff format and 
+        creates the knowledge base. 
+
+    pipeline(self,test_data, knowledge_base=None)
+        This method suggest the pipeline. If the knowledge_base variable is None, it will call the knowledge_base() method to generate the csv file. 
+
+        
 
 
-"""
-    def __init__(self, clustering_algo, param_range, path_to_dataset):
+    """
+
+    def __init__(self, clustering_algo, param_range, path_to_dataset=None):
+        """
+        Attributes
+        ----------
+        clustering_algo : list
+            A list of clustering algorithm
+        param_range : list
+            A list of n_cluster. i.e., [2,30], [lower_limit, higher_limit]
+        path_to_dataset : str
+            Path to the folder that contains the datasets which would be used to create the meta learning space. Default value is None, so that user can create an instance and pass previously created
+            metadataset later in the pipeline function. But for calling knowledge_base() method, this variable has to be passed.
+
+        Returns
+        ----------
+        None
+        """
         self.clustering_algo = clustering_algo
         self.param_range = param_range
         self.path_to_dataset=path_to_dataset
     
     def clus_hyp(self):
+        """
+        Attributes
+        ----------
+        Inherits attributes from init method.
+
+        Returns
+        ----------
+        list
+            The list clustering algorithm with the given hyperparameter range
+        """
         #keeping the configuration in a list
         self.configs = list()
         for i in self.clustering_algo:
@@ -182,7 +123,16 @@ variable: During instance creation of the class, 3 variables are expected to ini
 
 
     def knowledge_base(self):
+        """
+        Attributes
+        ----------
+        Inherits attributes from init method.
 
+        Returns
+        ----------
+        dataframe
+            The dataframe of the knowledge base
+        """
 
         configs=self.clus_hyp()
 
@@ -207,14 +157,14 @@ variable: During instance creation of the class, 3 variables are expected to ini
 
     #Path to the datasets
         files=glob.glob(self.path_to_dataset+'*.arff')
-        print(len(files))
+        print("Number of files based on which the knowldge base would be created: ", len(files))
 
         for t in transformations:
 
 
 
             for file in files:
-                print(file)
+                print("Knowledge base is being created for the following file: ", file.split('/')[-1].split('.')[0])
 
                 #read the dataset
                 data = arff.loadarff(file)
@@ -412,13 +362,29 @@ variable: During instance creation of the class, 3 variables are expected to ini
 
                                         'multi_cvi_correlation_score': multi_correlation.correlation}, ignore_index=True)
 
+        df_meta.to_csv('meta_data_new.csv')
         return df_meta
 
 
     def pipeline(self,test_data, knowledge_base=None):
+        """
+        Attributes
+        ----------
+        test_data: str
+            A string of the path to test dataset. The dataset has to be in CSV format. 
+        knowledge_base: str
+            A string of the path to the knowledge_base metadataset. The dataset has to be in CSV format. The previous knowledge_base() method creates the metadataset CSV file which later could be passed
+            here. 
+
+        Returns
+        ----------
+        str, str
+            String of the suggested cluster setting
+            String of the suggested data preprocessing pipeline
+        """
         
         if knowledge_base==None:
-            new_df=knowledge_base()
+            new_df=self.knowledge_base()
         else:
             new_df=pd.read_csv(knowledge_base, na_values='?')
         
@@ -449,12 +415,3 @@ variable: During instance creation of the class, 3 variables are expected to ini
 
         
         return matched['best_cluster_setting'], matched['transformation']
-        
-
-
-p1 = knowledge_base([KMeans, AgglomerativeClustering], [2,30], '/Users/hasan.tanvir/Documents/Thesis/Data/clustering-benchmark-master/src/main/resources/datasets/artificial/')
-
-cluster_setting, transformations=p1.pipeline( 'csmartml/datasets/zelnik6.csv', '/Users/hasan.tanvir/Documents/Thesis/code/meta_data.csv')
-
-print('Suggested Preprocessing: ',transformations)
-print('Suggested cluster setting: ',cluster_setting)
